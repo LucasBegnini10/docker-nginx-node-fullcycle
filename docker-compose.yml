@@ -1,0 +1,53 @@
+services:
+  db: 
+    image: mysql:8.0
+    container_name: db_fullcycle
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pwd
+      MYSQL_DATABASE: db_fullcycle
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    volumes:
+      - ./mysql:/var/lib/mysql
+    networks:
+      - fullcycle-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uuser", "-ppassword"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  node:
+    build:
+      context: ./node
+    container_name: node_fullcycle
+    image: lucasbegnini/fullcycle-node
+    volumes:
+      - ./node/index.js:/usr/src/app/index.js
+    networks:
+      - fullcycle-network
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=db_fullcycle
+      - DB_USER=user
+      - DB_PASSWORD=password
+      - DB_NAME=db_fullcycle
+
+  nginx:
+    build:
+      context: ./nginx
+    container_name: nginx_fullcycle
+    image: lucasbegnini/fullcycle-nginx
+    ports:
+      - "8080:80"
+    networks:
+      - fullcycle-network
+    depends_on:
+      - node
+
+networks:
+  fullcycle-network:
+    driver: bridge
