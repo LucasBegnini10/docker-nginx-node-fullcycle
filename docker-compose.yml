@@ -4,19 +4,14 @@ services:
     container_name: db_fullcycle
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root_pwd
-      MYSQL_DATABASE: db_fullcycle
-      MYSQL_USER: user
-      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: ${DATABASE_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DATABASE_NAME}
+      MYSQL_USER: ${DATABASE_USER}
+      MYSQL_PASSWORD: ${DATABASE_PASSWORD}
     volumes:
       - ./mysql:/var/lib/mysql
     networks:
       - fullcycle-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uuser", "-ppassword"]
-      interval: 2s
-      timeout: 5s
-      retries: 10
 
   node:
     build:
@@ -24,17 +19,18 @@ services:
     container_name: node_fullcycle
     image: lucasbegnini/fullcycle-node
     volumes:
-      - ./node/index.js:/usr/src/app/index.js
+      - ./node:/usr/src/app
+      - /usr/src/app/node_modules # to avoid overwrite node_modules
     networks:
       - fullcycle-network
+    entrypoint: wait-for db:3306 -t 40 -- node index.js
     depends_on:
-      db:
-        condition: service_healthy
+      - db
     environment:
-      - DB_HOST=db_fullcycle
-      - DB_USER=user
-      - DB_PASSWORD=password
-      - DB_NAME=db_fullcycle
+      - DB_HOST=${DATABASE_HOST}
+      - DB_USER=${DATABASE_USER}
+      - DB_PASSWORD=${DATABASE_PASSWORD}
+      - DB_NAME=${DATABASE_NAME}
 
   nginx:
     build:
